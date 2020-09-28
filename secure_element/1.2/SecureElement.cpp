@@ -49,10 +49,15 @@ namespace implementation {
 
 static struct se_gto_ctx *ctx;
 
-SecureElement::SecureElement(const char* configFile_name){
+SecureElement::SecureElement(const char* ese_name){
     nbrOpenChannel = 0;
     ctx = NULL;
-    strcpy( config_filename, configFile_name);
+
+    if (strcmp(ese_name, "eSE2") == 0) {
+        strcpy( config_filename, "/vendor/etc/libse-gto-hal2.conf");
+    } else {
+        strcpy( config_filename, "/vendor/etc/libse-gto-hal.conf");
+    }
 }
 
 int SecureElement::resetSE(){
