@@ -33,8 +33,10 @@ lrc8(const void *s, size_t n)
     uint8_t        c = 0;
 
     if (p)
-        while (n--)
+        while (n) {
             c ^= *p++;
+            n--;
+        }
     return c;
 }
 
@@ -87,7 +89,9 @@ crc_ccitt(uint16_t crc, const void *s, size_t n)
     const uint8_t *p = s;
 
     if (s)
-        while(n--)
+        while(n) {
             crc = (uint8_t)(crc >> 8) ^ fast[(uint8_t)(crc ^ *p++)];
+            n--;
+        }
     return crc;
 }

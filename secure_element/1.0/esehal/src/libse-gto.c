@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <log/log.h>
+#include <sys/ioctl.h>
 
 #include "se-gto/libse-gto.h"
 #include "libse-gto-private.h"
@@ -217,6 +218,26 @@ se_gto_open(struct se_gto_ctx *ctx)
     return 0;
 }
 
+#define SPI_IOC_MAGIC    'k'
+#define ST54SPI_IOC_WR_POWER _IOW(SPI_IOC_MAGIC, 99, __u32)
+
+int se_gto_Spi_Reset(struct se_gto_ctx *ctx)
+{
+    uint32_t io_code;
+    uint32_t power = 0;
+
+    printf("Send software reset via ioctl\n");
+    io_code = ST54SPI_IOC_WR_POWER;
+    power = 1;
+    if (-1 == ioctl (ctx->t1.spi_fd, io_code, &power)) {
+        perror("unable to soft reset via ioctl\n");
+        return -1;
+    }
+
+    isot1_resync(&ctx->t1);
+    return 0;
+}
+
 int gtoSPI_checkAlive(struct se_gto_ctx *ctx);
 int gtoSPI_checkAlive(struct se_gto_ctx *ctx)
 {
@@ -225,9 +246,13 @@ int gtoSPI_checkAlive(struct se_gto_ctx *ctx)
   unsigned char resp[258] = {0,};
 
   /*Check Alive implem*/
-  ret = se_gto_apdu_transmit(ctx, apdu, 5, resp, sizeof(resp));
-  if(ret < 0){
-    return -1;
+  for(int count = 0; count < 3; count++) {
+      ret = se_gto_apdu_transmit(ctx, apdu, 5, resp, sizeof(resp));
+      if(ret < 0){
+        if (count == 2) return -1;
+        /*Run SPI reset*/
+        se_gto_Spi_Reset(ctx);
+      }
   }
 
   return 0;
