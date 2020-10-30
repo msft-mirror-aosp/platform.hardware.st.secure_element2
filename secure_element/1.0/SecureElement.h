@@ -34,7 +34,7 @@ using ::android::sp;
 
 struct SecureElement : public ISecureElement , public hidl_death_recipient {
     // Methods from ::android::hardware::secure_element::V1_0::ISecureElement follow.
-    SecureElement(const char* configFile_name);
+    SecureElement(const char* ese_name);
     Return<void> init(const sp<V1_0::ISecureElementHalCallback>& clientCallback) override;
     Return<void> openLogicalChannel(const hidl_vec<uint8_t>& aid, uint8_t p2, openLogicalChannel_cb _hidl_cb) override;
     Return<void> openBasicChannel(const hidl_vec<uint8_t>& aid, uint8_t p2, openBasicChannel_cb _hidl_cb) override;
