@@ -685,10 +685,17 @@ SecureElement::reset() {
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
+
+    if(internalClientCallback_v1_1 != nullptr) {
+        internalClientCallback_v1_1->onStateChange_1_1(false, "SE deinitialized");
+    } else {
+        internalClientCallback->onStateChange(false);
+    }
+
     if(initializeSE() == EXIT_SUCCESS) {
         status = SecureElementStatus::SUCCESS;
     }
-	
+
     ALOGD("SecureElement:%s end", __func__);
 
     return status;
