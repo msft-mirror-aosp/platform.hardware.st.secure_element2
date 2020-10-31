@@ -26,10 +26,10 @@ using android::sp;
 using android::status_t;
 
 int main() {
-  ALOGD("Thales Secure Element HAL for eSE1 Service 1.3.0 is starting. libse-gto v1.12");
-  sp<ISecureElement> se_service = new SecureElement("eSE1");
+  ALOGD("Thales Secure Element HAL for eSE2 Service 1.3.0 is starting. libse-gto v1.12");
+  sp<ISecureElement> se_service = new SecureElement("eSE2");
   configureRpcThreadpool(1, true);
-  status_t status = se_service->registerAsService("eSE1");
+  status_t status = se_service->registerAsService("eSE2");
   if (status != OK) {
     LOG_ALWAYS_FATAL(
         "registerAsService (%d).",
