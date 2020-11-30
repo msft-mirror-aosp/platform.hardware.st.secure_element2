@@ -34,7 +34,7 @@ using ::android::sp;
 
 struct SecureElement : public ISecureElement , public hidl_death_recipient {
     // Methods from ::android::hardware::secure_element::V1_0::ISecureElement follow.
-    SecureElement();
+    SecureElement(const char* ese_name);
     Return<void> init(const sp<V1_0::ISecureElementHalCallback>& clientCallback) override;
     Return<void> openLogicalChannel(const hidl_vec<uint8_t>& aid, uint8_t p2, openLogicalChannel_cb _hidl_cb) override;
     Return<void> openBasicChannel(const hidl_vec<uint8_t>& aid, uint8_t p2, openBasicChannel_cb _hidl_cb) override;
@@ -52,6 +52,7 @@ struct SecureElement : public ISecureElement , public hidl_death_recipient {
     bool turnOffSE = true;
     uint8_t atr[32];
     uint8_t atr_size;
+    char config_filename[100];
     static sp<V1_0::ISecureElementHalCallback> internalClientCallback;
     int initializeSE();
     Return<::android::hardware::secure_element::V1_0::SecureElementStatus> deinitializeSE();
@@ -59,11 +60,9 @@ struct SecureElement : public ISecureElement , public hidl_death_recipient {
     static int run_apdu(struct se_gto_ctx *ctx, const uint8_t *apdu, uint8_t *resp, int n, int verbose);
     static int toint(char c);
     static void dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FILE *out);
-    void resetSE();
+    int resetSE();
     int openConfigFile(int verbose);
     int parseConfigFile(FILE *f, int verbose);
-    
-
 };
 
 // FIXME: most likely delete, this is only for passthrough implementations

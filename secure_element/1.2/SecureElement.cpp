@@ -49,9 +49,15 @@ namespace implementation {
 
 static struct se_gto_ctx *ctx;
 
-SecureElement::SecureElement(){
+SecureElement::SecureElement(const char* ese_name){
     nbrOpenChannel = 0;
     ctx = NULL;
+
+    if (strcmp(ese_name, "eSE2") == 0) {
+        strcpy( config_filename, "/vendor/etc/libse-gto-hal2.conf");
+    } else {
+        strcpy( config_filename, "/vendor/etc/libse-gto-hal.conf");
+    }
 }
 
 int SecureElement::resetSE(){
@@ -89,7 +95,7 @@ int SecureElement::initializeSE() {
     }
     //settings = default_settings(ctx);
     se_gto_set_log_level(ctx, 4);
-    
+
     openConfigFile(1);
 
     if (se_gto_open(ctx) < 0) {
@@ -97,7 +103,9 @@ int SecureElement::initializeSE() {
         return EXIT_FAILURE;
     }
 
-    if( resetSE() < 0) return EXIT_FAILURE;
+    if (resetSE() < 0) {
+        return EXIT_FAILURE;
+    }
 
     checkSeUp = true;
     turnOffSE = false;
@@ -129,7 +137,6 @@ Return<void> SecureElement::init(const sp<::android::hardware::secure_element::V
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
         clientCallback->onStateChange(false);
-        return Void();
     }
 
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
@@ -157,7 +164,6 @@ Return<void> SecureElement::init_1_1(const sp<::android::hardware::secure_elemen
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
         clientCallback->onStateChange_1_1(false, "initializeSE Failed");
-        return Void();
     }
 
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
@@ -612,24 +618,24 @@ SecureElement::openConfigFile(int verbose)
 {
     int   r;
     FILE *f;
-    char filename[] = "/vendor/etc/libse-gto-hal.conf";
+
 
     /* filename is not NULL */
-    ALOGD("SecureElement:%s Open Config file : %s", __func__, filename);
-    f = fopen(filename, "r");
+    ALOGD("SecureElement:%s Open Config file : %s", __func__, config_filename);
+    f = fopen(config_filename, "r");
     if (f) {
         r = parseConfigFile(f, verbose);
         if (r == -1) {
-            perror(filename);
-            ALOGE("SecureElement:%s Error parse %s Failed", __func__, filename);
+            perror(config_filename);
+            ALOGE("SecureElement:%s Error parse %s Failed", __func__, config_filename);
         }
         if (fclose(f) != 0) {
             r = -1;
-            ALOGE("SecureElement:%s Error close %s Failed", __func__, filename);
+            ALOGE("SecureElement:%s Error close %s Failed", __func__, config_filename);
         }
     } else {
         r = -1;
-        ALOGE("SecureElement:%s Error open %s Failed", __func__, filename);
+        ALOGE("SecureElement:%s Error open %s Failed", __func__, config_filename);
     }
     return r;
 }
@@ -685,10 +691,17 @@ SecureElement::reset() {
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
+
+    if(internalClientCallback_v1_1 != nullptr) {
+        internalClientCallback_v1_1->onStateChange_1_1(false, "SE deinitialized");
+    } else {
+        internalClientCallback->onStateChange(false);
+    }
+
     if(initializeSE() == EXIT_SUCCESS) {
         status = SecureElementStatus::SUCCESS;
     }
-	
+
     ALOGD("SecureElement:%s end", __func__);
 
     return status;

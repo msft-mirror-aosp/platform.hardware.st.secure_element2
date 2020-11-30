@@ -10,15 +10,15 @@
  * See the License for the specific language governing permissions and limitations under the License.
 
  ****************************************************************************/
-#include <android/hardware/secure_element/1.0/ISecureElement.h>
+#include <android/hardware/secure_element/1.1/ISecureElement.h>
 #include <hidl/LegacySupport.h>
 #include <log/log.h>
 
 #include "SecureElement.h"
 
 // Generated HIDL files
-using android::hardware::secure_element::V1_0::ISecureElement;
-using android::hardware::secure_element::V1_0::implementation::SecureElement;
+using android::hardware::secure_element::V1_1::ISecureElement;
+using android::hardware::secure_element::V1_1::implementation::SecureElement;
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
 using android::OK;
@@ -26,10 +26,11 @@ using android::sp;
 using android::status_t;
 
 int main() {
-  ALOGD("Thales Secure Element HAL for eSE1 Service 1.3.0 is starting. libse-gto v1.12");
-  sp<ISecureElement> se_service = new SecureElement("eSE1");
+  ALOGD("android::hardware::secure_element::V1_1 is starting.");
+  ALOGD("Thales Secure Element HAL for eSE2 Service 1.3.0 is starting. libse-gto v1.12");
+  sp<ISecureElement> se_service = new SecureElement("eSE2");
   configureRpcThreadpool(1, true);
-  status_t status = se_service->registerAsService("eSE1");
+  status_t status = se_service->registerAsService("eSE2");
   if (status != OK) {
     LOG_ALWAYS_FATAL(
         "registerAsService (%d).",
