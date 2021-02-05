@@ -21,21 +21,22 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
-#include <stdint.h>
+#include <cutils/properties.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <log/log.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
-#include "se-gto/libse-gto.h"
 #include "libse-gto-private.h"
+#include "se-gto/libse-gto.h"
 #include "spi.h"
 
 #define SE_GTO_GTODEV "/dev/gto"
@@ -262,10 +263,30 @@ SE_GTO_EXPORT int
 se_gto_close(struct se_gto_ctx *ctx)
 {
     int status = 0;
+    const char ese_reset_property[] = "persist.vendor.se.reset";
 
-    if(ctx) dbg("se_gto_close check_alive = %d\n", ctx->check_alive);
-    if (ctx->check_alive == 1)
-        if (gtoSPI_checkAlive(ctx) != 0) status = 0xDEAD;
+    if (ctx){
+        dbg("se_gto_close check_alive = %d\n", ctx->check_alive);
+    }
+    if (ctx->check_alive == 1) {
+        if (gtoSPI_checkAlive(ctx) != 0) {
+            status = -(0xDEAD);
+            // eSE needs cold reset.
+            if (strncmp(ctx->gtodev, "/dev/st54spi", 12) == 0 ) {
+                property_set(ese_reset_property, "needed");
+            }
+        } else {
+            // Set noneed if SPI worked normally.
+            if (strncmp(ctx->gtodev, "/dev/st54spi", 12) == 0 ) {
+                property_set(ese_reset_property, "noneed");
+            }
+        }
+    } else {
+        // Set noneed if SPI worked normally.
+        if (strncmp(ctx->gtodev, "/dev/st54spi", 12) == 0 ) {
+            property_set(ese_reset_property, "noneed");
+        }
+    }
 
     (void)isot1_release(&ctx->t1);
     (void)spi_teardown(ctx);
