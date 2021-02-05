@@ -57,6 +57,7 @@ struct SecureElement : public ISecureElement , public hidl_death_recipient {
     uint8_t atr[32];
     uint8_t atr_size;
     char config_filename[100];
+    char ese_flag_name[5];
     static sp<V1_0::ISecureElementHalCallback> internalClientCallback;
     static sp<V1_1::ISecureElementHalCallback> internalClientCallback_v1_1;
     int initializeSE();
