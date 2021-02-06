@@ -25,7 +25,11 @@
 #include "se-gto/libse-gto.h"
 #include "SecureElement.h"
 
+#include <dlfcn.h>
 
+#define VENDOR_LIB_PATH "/vendor/lib64/"
+#define VENDOR_LIB_EXT ".so"
+#include <android-base/properties.h>
 //#include "profile.h"
 //#include "settings.h"
 
@@ -53,10 +57,11 @@ SecureElement::SecureElement(const char* ese_name){
     nbrOpenChannel = 0;
     ctx = NULL;
 
-    if (strcmp(ese_name, "eSE2") == 0) {
-        strcpy( config_filename, "/vendor/etc/libse-gto-hal2.conf");
+    strncpy(ese_flag_name, ese_name, 4);
+    if (strncmp(ese_flag_name, "eSE2", 4) == 0) {
+        strncpy(config_filename, "/vendor/etc/libse-gto-hal2.conf", 31);
     } else {
-        strcpy( config_filename, "/vendor/etc/libse-gto-hal.conf");
+        strncpy(config_filename, "/vendor/etc/libse-gto-hal.conf", 30);
     }
 }
 
@@ -686,20 +691,51 @@ Return<::android::hardware::secure_element::V1_0::SecureElementStatus>
 SecureElement::reset() {
 
     SecureElementStatus status = SecureElementStatus::FAILED;
+    std::string valueStr = android::base::GetProperty("persist.vendor.se.streset", "");
+
+    int ret = 0;
 
     ALOGD("SecureElement:%s start", __func__);
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
 
-    if(internalClientCallback_v1_1 != nullptr) {
+    if (internalClientCallback_v1_1 != nullptr) {
         internalClientCallback_v1_1->onStateChange_1_1(false, "SE deinitialized");
     } else {
         internalClientCallback->onStateChange(false);
     }
 
-    if(initializeSE() == EXIT_SUCCESS) {
-        status = SecureElementStatus::SUCCESS;
+    if (strncmp(ese_flag_name, "eSE1", 4) == 0 && valueStr.length() > 0) {
+        typedef int (*STEseReset)();
+        valueStr = VENDOR_LIB_PATH + valueStr + VENDOR_LIB_EXT;
+        void *stdll = dlopen(valueStr.c_str(), RTLD_NOW);
+        STEseReset fn = (STEseReset)dlsym(stdll, "direct_reset");
+        ret = fn();
+
+        ALOGD("SecureElement:%s STResetTool ret : %d", __func__, ret);
+        if (ret == 0) {
+            ALOGD("SecureElement:%s STResetTool Success", __func__);
+            if (initializeSE() == EXIT_SUCCESS) {
+                status = SecureElementStatus::SUCCESS;
+            }
+            turnOffSE = true;
+            if (deinitializeSE() != SecureElementStatus::SUCCESS) {
+                ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
+            }
+        } else {
+            ALOGE("SecureElement:%s STResetTool Failed!", __func__);
+        }
+
+        dlclose(stdll);
+    } else {
+        if (initializeSE() == EXIT_SUCCESS) {
+            status = SecureElementStatus::SUCCESS;
+        }
+        turnOffSE = true;
+        if (deinitializeSE() != SecureElementStatus::SUCCESS) {
+            ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
+        }
     }
 
     ALOGD("SecureElement:%s end", __func__);
