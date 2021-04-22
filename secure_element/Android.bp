@@ -81,6 +81,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
 
 cc_library_shared {
@@ -159,6 +163,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
 
 cc_library_shared {
@@ -240,6 +248,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
 
 // --------------------------------------------------------------------------------
@@ -317,6 +329,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
 
 cc_library_shared {
@@ -395,6 +411,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
 
 cc_library_shared {
@@ -476,4 +496,8 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+    sanitize: {
+        memtag_heap: true,
+    },
 }
