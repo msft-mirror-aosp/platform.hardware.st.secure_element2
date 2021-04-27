@@ -83,10 +83,15 @@ sp<V1_0::ISecureElementHalCallback> SecureElement::internalClientCallback = null
 sp<V1_1::ISecureElementHalCallback> SecureElement::internalClientCallback_v1_1 = nullptr;
 int SecureElement::initializeSE() {
 
-    //struct settings *settings;
     int n;
 
     ALOGD("SecureElement:%s start", __func__);
+
+    if (checkSeUp) {
+        ALOGD("SecureElement:%s Already initialized", __func__);
+        ALOGD("SecureElement:%s end", __func__);
+        return EXIT_SUCCESS;
+    }
 
     if (se_gto_new(&ctx) < 0) {
         ALOGE("SecureElement:%s se_gto_new FATAL:%s", __func__,strerror(errno));
@@ -104,17 +109,12 @@ int SecureElement::initializeSE() {
     }
 
     if (resetSE() < 0) {
+        se_gto_close(ctx);
+        ctx = NULL;
         return EXIT_FAILURE;
     }
 
     checkSeUp = true;
-    turnOffSE = false;
-
-
-    if(internalClientCallback_v1_1 != nullptr) internalClientCallback_v1_1->onStateChange_1_1(true, "SE Initialized");
-    else internalClientCallback->onStateChange(true);
-
-    turnOffSE = true;
 
     ALOGD("SecureElement:%s end", __func__);
     return EXIT_SUCCESS;
@@ -124,7 +124,7 @@ Return<void> SecureElement::init(const sp<::android::hardware::secure_element::V
 
     ALOGD("SecureElement:%s start", __func__);
     if (clientCallback == nullptr) {
-        ALOGD("SecureElement:%s clientCallback == nullptr", __func__);
+        ALOGE("SecureElement:%s clientCallback == nullptr", __func__);
         return Void();
     } else {
         internalClientCallback = clientCallback;
@@ -137,11 +137,11 @@ Return<void> SecureElement::init(const sp<::android::hardware::secure_element::V
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
         clientCallback->onStateChange(false);
+    } else {
+        ALOGD("SecureElement:%s initializeSE Success", __func__);
+        clientCallback->onStateChange(true);
     }
 
-    if (deinitializeSE() != SecureElementStatus::SUCCESS) {
-        ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
-    }
     ALOGD("SecureElement:%s end", __func__);
 
     return Void();
@@ -151,7 +151,7 @@ Return<void> SecureElement::init_1_1(const sp<::android::hardware::secure_elemen
 
     ALOGD("SecureElement:%s start", __func__);
     if (clientCallback == nullptr) {
-        ALOGD("SecureElement:%s clientCallback == nullptr", __func__);
+        ALOGE("SecureElement:%s clientCallback == nullptr", __func__);
         return Void();
     } else {
         internalClientCallback = nullptr;
@@ -163,12 +163,12 @@ Return<void> SecureElement::init_1_1(const sp<::android::hardware::secure_elemen
 
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
-        clientCallback->onStateChange_1_1(false, "initializeSE Failed");
+        clientCallback->onStateChange_1_1(false, "SE Initialized failed");
+    } else {
+        ALOGD("SecureElement:%s initializeSE Success", __func__);
+        clientCallback->onStateChange_1_1(true, "SE Initialized");
     }
 
-    if (deinitializeSE() != SecureElementStatus::SUCCESS) {
-        ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
-    }
     ALOGD("SecureElement:%s end", __func__);
 
     return Void();
@@ -235,6 +235,12 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
     if (!checkSeUp) {
         if (initializeSE() != EXIT_SUCCESS) {
             ALOGE("SecureElement:%s: Failed to re-initialise the eSE HAL", __func__);
+            if(internalClientCallback_v1_1 != nullptr) {
+                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
+            }
+            else {
+                internalClientCallback->onStateChange(false);
+            }
             _hidl_cb(resApduBuff, SecureElementStatus::IOERROR);
             return Void();
         }
@@ -386,6 +392,12 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
     if (!checkSeUp) {
         if (initializeSE() != EXIT_SUCCESS) {
             ALOGE("SecureElement:%s: Failed to re-initialise the eSE HAL", __func__);
+            if(internalClientCallback_v1_1 != nullptr) {
+                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
+            }
+            else {
+                internalClientCallback->onStateChange(false);
+            }
             _hidl_cb(result, SecureElementStatus::IOERROR);
             return Void();
         }
@@ -648,7 +660,7 @@ SecureElement::openConfigFile(int verbose)
 }
 
 void SecureElement::serviceDied(uint64_t, const wp<IBase>&) {
-  ALOGE("SecureElement:%s SecureElement serviceDied", __func__);
+  ALOGD("SecureElement:%s SecureElement serviceDied", __func__);
   SecureElementStatus mSecureElementStatus = deinitializeSE();
   if (mSecureElementStatus != SecureElementStatus::SUCCESS) {
     ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
@@ -669,9 +681,14 @@ SecureElement::deinitializeSE() {
 
     ALOGD("SecureElement:%s start", __func__);
 
-    if(turnOffSE){
+    if(checkSeUp){
         if (se_gto_close(ctx) < 0) {
             mSecureElementStatus = SecureElementStatus::FAILED;
+            if (internalClientCallback_v1_1 != nullptr) {
+                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
+            } else {
+                internalClientCallback->onStateChange(false);
+            }
         } else {
             ctx = NULL;
             mSecureElementStatus = SecureElementStatus::SUCCESS;
@@ -679,8 +696,6 @@ SecureElement::deinitializeSE() {
             nbrOpenChannel = 0;
         }
         checkSeUp = false;
-        turnOffSE = false;
-
     }else{
         ALOGD("SecureElement:%s No need to deinitialize SE", __func__);
         mSecureElementStatus = SecureElementStatus::SUCCESS;
