@@ -463,6 +463,13 @@ Return<::android::hardware::secure_element::V1_0::SecureElementStatus> SecureEle
     uint8_t *resp;
     int resp_len = 0;
 
+    if (!checkSeUp) {
+        ALOGE("SecureElement:%s cannot closeChannel, HAL is deinitialized", __func__);
+        mSecureElementStatus = SecureElementStatus::FAILED;
+        ALOGD("SecureElement:%s end", __func__);
+        return mSecureElementStatus;
+    }
+
     if ((channelNumber < 0) || (channelNumber >= MAX_CHANNELS)) {
         ALOGE("SecureElement:%s Channel not supported", __func__);
         mSecureElementStatus = SecureElementStatus::FAILED;
