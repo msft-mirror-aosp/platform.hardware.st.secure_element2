@@ -53,7 +53,6 @@ struct SecureElement : public ISecureElement , public hidl_death_recipient {
     uint8_t nbrOpenChannel = 0;
     bool isBasicChannelOpen = false;
     bool checkSeUp = false;
-    bool turnOffSE = true;
     uint8_t atr[32];
     uint8_t atr_size;
     char config_filename[100];
