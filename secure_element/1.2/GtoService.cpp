@@ -29,7 +29,7 @@ using android::status_t;
 
 int main() {
   ALOGD("android::hardware::secure_element::V1_2 is starting.");
-  ALOGD("Thales Secure Element HAL for eSE1 Service 1.5.0 is starting. libse-gto v1.13");
+  ALOGD("Thales Secure Element HAL for eSE1 Service 1.6.0 is starting. libse-gto v1.13");
   // Ignore this dlopen if libstpreprocess21.so doesn't exist.
   void* stdll = dlopen("/vendor/lib64/libstpreprocess21.so", RTLD_NOW);
   if (stdll) {
