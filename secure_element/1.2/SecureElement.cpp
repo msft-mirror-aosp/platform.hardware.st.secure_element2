@@ -90,6 +90,7 @@ sp<V1_1::ISecureElementHalCallback> SecureElement::internalClientCallback_v1_1 =
 int SecureElement::initializeSE() {
 
     int n;
+    int ret = 0;
 
     ALOGD("SecureElement:%s start", __func__);
 
@@ -114,7 +115,14 @@ int SecureElement::initializeSE() {
         return EXIT_FAILURE;
     }
 
-    if (resetSE() < 0) {
+    ret = resetSE();
+
+    if (ret < 0 && (strncmp(ese_flag_name, "eSE2", 4) == 0)) {
+        sleep(6);
+        ALOGE("SecureElement:%s retry resetSE", __func__);
+        ret = resetSE();
+    }
+    if (ret < 0) {
         se_gto_close(ctx);
         ctx = NULL;
         return EXIT_FAILURE;
