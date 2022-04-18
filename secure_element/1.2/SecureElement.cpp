@@ -775,11 +775,14 @@ Return<::android::hardware::secure_element::V1_0::SecureElementStatus>
 SecureElement::reset() {
 
     SecureElementStatus status = SecureElementStatus::FAILED;
-    std::string valueStr = android::base::GetProperty("persist.vendor.se.streset", "");
+    std::string eSE1ResetToolStr;
 
     int ret = 0;
 
     ALOGD("SecureElement:%s start", __func__);
+    if (strncmp(ese_flag_name, "eSE1", 4) == 0) {
+        eSE1ResetToolStr = android::base::GetProperty("persist.vendor.se.streset", "");
+    }
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
@@ -790,10 +793,10 @@ SecureElement::reset() {
         internalClientCallback->onStateChange(false);
     }
 
-    if (strncmp(ese_flag_name, "eSE1", 4) == 0 && valueStr.length() > 0) {
+    if (eSE1ResetToolStr.length() > 0) {
         typedef int (*STEseReset)();
-        valueStr = VENDOR_LIB_PATH + valueStr + VENDOR_LIB_EXT;
-        void *stdll = dlopen(valueStr.c_str(), RTLD_NOW);
+        eSE1ResetToolStr = VENDOR_LIB_PATH + eSE1ResetToolStr + VENDOR_LIB_EXT;
+        void *stdll = dlopen(eSE1ResetToolStr.c_str(), RTLD_NOW);
         STEseReset fn = (STEseReset)dlsym(stdll, "direct_reset");
         ret = fn();
 
