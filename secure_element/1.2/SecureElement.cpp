@@ -53,6 +53,7 @@ namespace implementation {
 
 uint8_t getResponse[5] = {0x00, 0xC0, 0x00, 0x00, 0x00};
 static struct se_gto_ctx *ctx;
+bool debug_log_enabled = false;
 
 SecureElement::SecureElement(const char* ese_name){
     nbrOpenChannel = 0;
@@ -106,7 +107,7 @@ int SecureElement::initializeSE() {
         return EXIT_FAILURE;
     }
     //settings = default_settings(ctx);
-    se_gto_set_log_level(ctx, 4);
+    se_gto_set_log_level(ctx, 3);
 
     openConfigFile(1);
 
@@ -599,6 +600,8 @@ SecureElement::dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FIL
     int len = 0;
     int input_len = n;
 
+    if (!debug_log_enabled) return;
+
     msg = (char*) malloc ( (pf ? strlen(pf) : 0) + input_len * 3 + 1);
     if(!msg) {
         errno = ENOMEM;
@@ -687,13 +690,26 @@ SecureElement::parseConfigFile(FILE *f, int verbose)
             continue;
         }
 
-        pch = strtok (s," =;");
-        if (strcmp("GTO_DEV", pch) == 0){
+        pch = strtok(s," =;");
+        if (strcmp("GTO_DEV", pch) == 0) {
             pch = strtok (NULL, " =;");
             ALOGD("SecureElement:%s Defined node : %s", __func__, pch);
-            if (strlen (pch) > 0 && strcmp("\n",pch) != 0 && strcmp("\0",pch) != 0 ) se_gto_set_gtodev(ctx, pch);
+            if (strlen(pch) > 0 && strcmp("\n", pch) != 0 && strcmp("\0", pch) != 0 ) {
+                se_gto_set_gtodev(ctx, pch);
+            }
+        } else if (strcmp("GTO_DEBUG", pch) == 0) {
+            pch = strtok(NULL, " =;");
+            ALOGD("SecureElement:%s Log state : %s", __func__, pch);
+            if (strlen(pch) > 0 && strcmp("\n", pch) != 0 && strcmp("\0", pch) != 0 ) {
+                if (strcmp(pch, "enable") == 0) {
+                    debug_log_enabled = true;
+                    se_gto_set_log_level(ctx, 4);
+                } else {
+                    debug_log_enabled = false;
+                    se_gto_set_log_level(ctx, 3);
+                }
+            }
         }
-        
     }
     return 0;
 }
