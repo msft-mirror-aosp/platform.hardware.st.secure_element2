@@ -53,6 +53,7 @@ namespace implementation {
 
 uint8_t getResponse[5] = {0x00, 0xC0, 0x00, 0x00, 0x00};
 static struct se_gto_ctx *ctx;
+bool debug_log_enabled = false;
 
 SecureElement::SecureElement(const char* ese_name){
     nbrOpenChannel = 0;
@@ -90,6 +91,7 @@ sp<V1_1::ISecureElementHalCallback> SecureElement::internalClientCallback_v1_1 =
 int SecureElement::initializeSE() {
 
     int n;
+    int ret = 0;
 
     ALOGD("SecureElement:%s start", __func__);
 
@@ -105,7 +107,7 @@ int SecureElement::initializeSE() {
         return EXIT_FAILURE;
     }
     //settings = default_settings(ctx);
-    se_gto_set_log_level(ctx, 4);
+    se_gto_set_log_level(ctx, 3);
 
     openConfigFile(1);
 
@@ -114,7 +116,14 @@ int SecureElement::initializeSE() {
         return EXIT_FAILURE;
     }
 
-    if (resetSE() < 0) {
+    ret = resetSE();
+
+    if (ret < 0 && (strncmp(ese_flag_name, "eSE2", 4) == 0)) {
+        sleep(6);
+        ALOGE("SecureElement:%s retry resetSE", __func__);
+        ret = resetSE();
+    }
+    if (ret < 0) {
         se_gto_close(ctx);
         ctx = NULL;
         return EXIT_FAILURE;
@@ -591,6 +600,8 @@ SecureElement::dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FIL
     int len = 0;
     int input_len = n;
 
+    if (!debug_log_enabled) return;
+
     msg = (char*) malloc ( (pf ? strlen(pf) : 0) + input_len * 3 + 1);
     if(!msg) {
         errno = ENOMEM;
@@ -679,13 +690,26 @@ SecureElement::parseConfigFile(FILE *f, int verbose)
             continue;
         }
 
-        pch = strtok (s," =;");
-        if (strcmp("GTO_DEV", pch) == 0){
+        pch = strtok(s," =;");
+        if (strcmp("GTO_DEV", pch) == 0) {
             pch = strtok (NULL, " =;");
             ALOGD("SecureElement:%s Defined node : %s", __func__, pch);
-            if (strlen (pch) > 0 && strcmp("\n",pch) != 0 && strcmp("\0",pch) != 0 ) se_gto_set_gtodev(ctx, pch);
+            if (strlen(pch) > 0 && strcmp("\n", pch) != 0 && strcmp("\0", pch) != 0 ) {
+                se_gto_set_gtodev(ctx, pch);
+            }
+        } else if (strcmp("GTO_DEBUG", pch) == 0) {
+            pch = strtok(NULL, " =;");
+            ALOGD("SecureElement:%s Log state : %s", __func__, pch);
+            if (strlen(pch) > 0 && strcmp("\n", pch) != 0 && strcmp("\0", pch) != 0 ) {
+                if (strcmp(pch, "enable") == 0) {
+                    debug_log_enabled = true;
+                    se_gto_set_log_level(ctx, 4);
+                } else {
+                    debug_log_enabled = false;
+                    se_gto_set_log_level(ctx, 3);
+                }
+            }
         }
-        
     }
     return 0;
 }
@@ -767,11 +791,14 @@ Return<::android::hardware::secure_element::V1_0::SecureElementStatus>
 SecureElement::reset() {
 
     SecureElementStatus status = SecureElementStatus::FAILED;
-    std::string valueStr = android::base::GetProperty("persist.vendor.se.streset", "");
+    std::string eSE1ResetToolStr;
 
     int ret = 0;
 
     ALOGD("SecureElement:%s start", __func__);
+    if (strncmp(ese_flag_name, "eSE1", 4) == 0) {
+        eSE1ResetToolStr = android::base::GetProperty("persist.vendor.se.streset", "");
+    }
     if (deinitializeSE() != SecureElementStatus::SUCCESS) {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
@@ -782,10 +809,10 @@ SecureElement::reset() {
         internalClientCallback->onStateChange(false);
     }
 
-    if (strncmp(ese_flag_name, "eSE1", 4) == 0 && valueStr.length() > 0) {
+    if (eSE1ResetToolStr.length() > 0) {
         typedef int (*STEseReset)();
-        valueStr = VENDOR_LIB_PATH + valueStr + VENDOR_LIB_EXT;
-        void *stdll = dlopen(valueStr.c_str(), RTLD_NOW);
+        eSE1ResetToolStr = VENDOR_LIB_PATH + eSE1ResetToolStr + VENDOR_LIB_EXT;
+        void *stdll = dlopen(eSE1ResetToolStr.c_str(), RTLD_NOW);
         STEseReset fn = (STEseReset)dlsym(stdll, "direct_reset");
         ret = fn();
 
