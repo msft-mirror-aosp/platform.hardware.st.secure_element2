@@ -66,7 +66,6 @@ static void
 t1_recv_window_append(struct t1_state *t1, const void *buf, int n)
 {
     ptrdiff_t free = t1_recv_window_free_size(t1);
-    ALOGE("gto_esehal SecureElement:t1_recv_window_append free = %d\n", free);
     if (n > free)
         n = (int)free;
     if (n > 0) {
