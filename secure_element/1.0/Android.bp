@@ -30,6 +30,16 @@ cc_binary {
         "libutils",
     ],
 
+    cflags: [
+        "-DANDROID",
+        "-DENABLE_LOGGING=1",
+        "-DENABLE_DEBUG=1",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-error",
+        "-Wreturn-type",
+    ],
+
     sanitize: {
         memtag_heap: true,
     },
@@ -55,6 +65,16 @@ cc_binary {
         "libhidlbase",
         "liblog",
         "libutils",
+    ],
+
+    cflags: [
+        "-DANDROID",
+        "-DENABLE_LOGGING=1",
+        "-DENABLE_DEBUG=1",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-error",
+        "-Wreturn-type",
     ],
 
     sanitize: {
