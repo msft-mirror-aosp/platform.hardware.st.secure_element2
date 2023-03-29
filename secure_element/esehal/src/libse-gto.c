@@ -185,7 +185,7 @@ se_gto_apdu_transmit(struct se_gto_ctx *ctx, const void *apdu, int n, void *resp
     }
     r = isot1_transceive(&ctx->t1, apdu, n, resp, r);
     dbg("isot1_transceive: r=%d\n", r);
-    dbg("isot1_transceive: ctx->t1.recv.end - ctx->t1.recv.start = %d\n", ctx->t1.recv.end - ctx->t1.recv.start);
+    dbg("isot1_transceive: ctx->t1.recv.end - ctx->t1.recv.start = %ld\n", ctx->t1.recv.end - ctx->t1.recv.start);
     dbg("isot1_transceive: ctx->t1.recv.size = %zu\n", ctx->t1.recv.size);
     dbg("isot1_transceive: ctx->t1.buf[2] = %02X\n", ctx->t1.buf[2]);
     if (r < 0) {
