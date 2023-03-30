@@ -4,7 +4,7 @@
  * This copy is licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
- *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html
+ *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html 
  *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and limitations under the License.
@@ -56,7 +56,7 @@ typedef void se_gto_log_fn (struct se_gto_ctx *ctx, const char *s);
  * Use environment variable SE_GTO_LOG to alter default log level globally.
  * SE_GTO_LOG=n with n from 0 to 4, or choice of SE_GTO_LOG to err, info, debug.
  *
- * @return a new se-gto library context
+ * @returns a new se-gto library context
  */
 int se_gto_new(struct se_gto_ctx **ctx);
 
@@ -81,7 +81,7 @@ int se_gto_close(struct se_gto_ctx *ctx);
  *
  * @param ctx: se-gto library context
  *
- * @return the current logging level
+ * @returns the current logging level
  **/
 int se_gto_get_log_level(struct se_gto_ctx *ctx);
 
@@ -136,7 +136,7 @@ void se_gto_set_userdata(struct se_gto_ctx *ctx, void *userdata);
  *
  * @param ctx se-gto library context.
  *
- * @return nul terminated string.
+ * @returns nul terminated string.
  */
 const char *se_gto_get_gtodev(struct se_gto_ctx *ctx);
 
@@ -159,7 +159,7 @@ void se_gto_set_gtodev(struct se_gto_ctx *ctx, const char *gtodev);
  *
  * @c errno is set on error.
  *
- * @return number of bytes in @c atr buffer or -1 on error.
+ * @returns number of bytes in @c atr buffer or -1 on error.
  */
 int se_gto_reset(struct se_gto_ctx *ctx, void *atr, size_t r);
 
@@ -176,7 +176,7 @@ int se_gto_reset(struct se_gto_ctx *ctx, void *atr, size_t r);
  *
  * @c errno is set on error.
  *
- * @return number of bytes filled in @c resp buffer. -1 on error.
+ * @returns number of bytes filled in @c resp buffer. -1 on error.
  *
  * @resp buffer last two bytes are SW1 and SW2 respectively. Response length
  * will always be at least 2 bytes. Maximum response size will be 257 bytes.

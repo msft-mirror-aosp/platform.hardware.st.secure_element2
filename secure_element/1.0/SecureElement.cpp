@@ -4,7 +4,7 @@
  * This copy is licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
- *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html
+ *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html 
  *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and limitations under the License.
@@ -24,6 +24,10 @@
 
 #include "se-gto/libse-gto.h"
 #include "SecureElement.h"
+
+
+//#include "profile.h"
+//#include "settings.h"
 
 namespace android {
 namespace hardware {
@@ -95,6 +99,7 @@ int SecureElement::initializeSE() {
 
         return EXIT_FAILURE;
     }
+    //settings = default_settings(ctx);
     se_gto_set_log_level(ctx, 3);
 
     openConfigFile(1);
@@ -116,6 +121,7 @@ int SecureElement::initializeSE() {
     return EXIT_SUCCESS;
 }
 
+// Methods from ::android::hardware::secure_element::V1_0::ISecureElement follow.
 Return<void> SecureElement::init(const sp<::android::hardware::secure_element::V1_0::ISecureElementHalCallback>& clientCallback) {
 
     ALOGD("SecureElement:%s start", __func__);
@@ -279,7 +285,7 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
 
     mSecureElementStatus = SecureElementStatus::IOERROR;
 
-    apdu_len = (int32_t)(6 + aid.size());
+    apdu_len = (int32_t)(5 + aid.size());
     resp_len = 0;
     apdu = (uint8_t*)malloc(apdu_len * sizeof(uint8_t));
     resp = (uint8_t*)malloc(65536 * sizeof(uint8_t));
@@ -292,8 +298,6 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
         apdu[index++] = p2;
         apdu[index++] = aid.size();
         memcpy(&apdu[index], aid.data(), aid.size());
-        index += aid.size();
-        apdu[index] = 0x00;
 
 send_logical:
         dump_bytes("CMD: ", ':', apdu, apdu_len, stdout);
@@ -382,12 +386,6 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
     int getResponseOffset = 0;
     uint8_t index = 0;
 
-    if (isBasicChannelOpen) {
-        ALOGE("SecureElement:%s: Basic Channel already open", __func__);
-        _hidl_cb(result, SecureElementStatus::CHANNEL_NOT_AVAILABLE);
-        return Void();
-    }
-
     if (!checkSeUp) {
         if (initializeSE() != EXIT_SUCCESS) {
             ALOGE("SecureElement:%s: Failed to re-initialise the eSE HAL", __func__);
@@ -398,7 +396,7 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
     }
 
 
-    apdu_len = (int32_t)(6 + aid.size());
+    apdu_len = (int32_t)(5 + aid.size());
     resp_len = 0;
     apdu = (uint8_t*)malloc(apdu_len * sizeof(uint8_t));
     resp = (uint8_t*)malloc(65536 * sizeof(uint8_t));
@@ -412,11 +410,8 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
         apdu[index++] = p2;
         apdu[index++] = aid.size();
         memcpy(&apdu[index], aid.data(), aid.size());
-        index += aid.size();
-        apdu[index] = 0x00;
-
-send_basic:
         dump_bytes("CMD: ", ':', apdu, apdu_len, stdout);
+send_basic:
         resp_len = se_gto_apdu_transmit(ctx, apdu, apdu_len, resp, 65536);
         ALOGD("SecureElement:%s selectApdu resp_len = %d", __func__,resp_len);
     }
@@ -564,11 +559,14 @@ SecureElement::dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FIL
 
     if (pf) {
         len += sprintf(msg , "%s" , pf);
+        //len = len + 8;
     }
     while (input_len--) {
         len += sprintf(msg + len, "%02X" , *s++);
+        //len = len + 2;
         if (input_len && sep) {
             len += sprintf(msg + len, ":");
+            //len++;
         }
     }
     sprintf(msg + len, "\n");
@@ -636,6 +634,8 @@ SecureElement::parseConfigFile(FILE *f, int verbose)
         if (s == NULL)
             break;
         if (s[0] == '#') {
+            /*if (verbose)
+                fputs(buf, stdout);*/
             continue;
         }
 
@@ -727,6 +727,13 @@ SecureElement::deinitializeSE() {
     ALOGD("SecureElement:%s end", __func__);
     return mSecureElementStatus;
 }
+
+// Methods from ::android::hidl::base::V1_0::IBase follow.
+
+//ISecureElement* HIDL_FETCH_ISecureElement(const char* /* name */) {
+    //return new SecureElement();
+//}
+//
 }  // namespace implementation
 }  // namespace V1_0
 }  // namespace secure_element
