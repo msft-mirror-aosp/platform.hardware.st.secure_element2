@@ -43,6 +43,10 @@ namespace implementation {
 #define LOG_HAL_LEVEL 4
 #endif
 
+#ifndef MAX_AID_LEN
+#define MAX_AID_LEN 16
+#endif
+
 uint8_t getResponse[5] = {0x00, 0xC0, 0x00, 0x00, 0x00};
 static struct se_gto_ctx *ctx;
 bool debug_log_enabled = false;
@@ -245,6 +249,12 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
 
     SecureElementStatus mSecureElementStatus = SecureElementStatus::IOERROR;
 
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        _hidl_cb(resApduBuff, SecureElementStatus::FAILED);
+        return Void();
+    }
+
     uint8_t *apdu; //65536
     int apdu_len = 0;
     uint8_t *resp;
@@ -436,6 +446,11 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
         }
     }
 
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        _hidl_cb(result, SecureElementStatus::FAILED);
+        return Void();
+    }
 
     apdu_len = (int32_t)(6 + aid.size());
     resp_len = 0;
