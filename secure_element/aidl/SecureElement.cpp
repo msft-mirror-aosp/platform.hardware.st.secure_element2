@@ -48,6 +48,10 @@ namespace se {
 #define SUCCESS 0
 #endif
 
+#ifndef MAX_AID_LEN
+#define MAX_AID_LEN 16
+#endif
+
 uint8_t getResponse[5] = {0x00, 0xC0, 0x00, 0x00, 0x00};
 static struct se_gto_ctx *ctx;
 bool debug_log_enabled = false;
@@ -223,6 +227,11 @@ ScopedAStatus SecureElement::openLogicalChannel(const std::vector<uint8_t>& aid,
             internalClientCallback->onStateChange(false, "SE Initialized failed");
             return ScopedAStatus::fromServiceSpecificError(IOERROR);
         }
+    }
+
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        return ScopedAStatus::fromServiceSpecificError(FAILED);
     }
 
     int mSecureElementStatus = IOERROR;
@@ -417,6 +426,10 @@ ScopedAStatus SecureElement::openBasicChannel(const std::vector<uint8_t>& aid, i
         }
     }
 
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        return ScopedAStatus::fromServiceSpecificError(FAILED);
+    }
 
     apdu_len = (int32_t)(6 + aid.size());
     resp_len = 0;
