@@ -40,10 +40,6 @@ cc_binary {
         "-Wno-error",
         "-Wreturn-type",
     ],
-
-    sanitize: {
-        memtag_heap: true,
-    },
 }
 
 cc_binary {
@@ -78,8 +74,4 @@ cc_binary {
         "-Wno-error",
         "-Wreturn-type",
     ],
-
-    sanitize: {
-        memtag_heap: true,
-    },
 }
