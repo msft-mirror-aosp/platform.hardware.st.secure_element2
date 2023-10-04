@@ -68,6 +68,7 @@ struct SecureElement : public ISecureElement , public hidl_death_recipient {
     int resetSE();
     int openConfigFile(int verbose);
     int parseConfigFile(FILE *f, int verbose);
+    void notify(bool state, const char *message);
 };
 
 

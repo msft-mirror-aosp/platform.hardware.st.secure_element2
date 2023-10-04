@@ -56,6 +56,7 @@ struct SecureElement : public BnSecureElement {
     int resetSE();
     int openConfigFile(int verbose);
     int parseConfigFile(FILE *f, int verbose);
+    void notify(bool state, const char *message);
 };
 
 } //se
