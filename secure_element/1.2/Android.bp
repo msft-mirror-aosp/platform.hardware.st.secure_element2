@@ -41,6 +41,10 @@ cc_binary {
         "-Wno-error",
         "-Wreturn-type",
     ],
+
+    arch: {
+        arm: { cflags: ["-DST_LIB_32"] },
+    }
 }
 
 cc_binary {
@@ -76,4 +80,8 @@ cc_binary {
         "-Wno-error",
         "-Wreturn-type",
     ],
+
+    arch: {
+        arm: { cflags: ["-DST_LIB_32"] },
+    }
 }
