@@ -40,9 +40,9 @@ cc_binary {
         "-Wreturn-type",
     ],
 
-    sanitize: {
-        memtag_heap: true,
-    },
+    arch: {
+        arm: { cflags: ["-DST_LIB_32"] },
+    }
 }
 
 cc_binary {
@@ -77,7 +77,7 @@ cc_binary {
         "libutils",
     ],
 
-    sanitize: {
-        memtag_heap: true,
-    },
+    arch: {
+        arm: { cflags: ["-DST_LIB_32"] },
+    }
 }
