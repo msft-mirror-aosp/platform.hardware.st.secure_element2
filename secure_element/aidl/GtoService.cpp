@@ -10,26 +10,29 @@
  * See the License for the specific language governing permissions and limitations under the License.
 
  ****************************************************************************/
-#include <android/hardware/secure_element/1.2/ISecureElement.h>
 #include <dlfcn.h>
-#include <hidl/LegacySupport.h>
 #include <log/log.h>
 
 #include "SecureElement.h"
+#include <aidl/android/hardware/secure_element/BnSecureElement.h>
+#include <android-base/hex.h>
+#include <android-base/logging.h>
+#include <android/binder_manager.h>
+#include <android/binder_process.h>
+
 typedef int (*STEsePreProcess)(void);
 
-// Generated HIDL files
-using android::hardware::secure_element::V1_2::ISecureElement;
-using android::hardware::secure_element::V1_2::implementation::SecureElement;
-using android::hardware::configureRpcThreadpool;
-using android::hardware::joinRpcThreadpool;
 using android::OK;
-using android::sp;
-using android::status_t;
+
+using aidl::android::hardware::secure_element::BnSecureElement;
+using aidl::android::hardware::secure_element::ISecureElementCallback;
+using aidl::android::hardware::secure_element::LogicalChannelResponse;
+using android::base::HexString;
+using ndk::ScopedAStatus;
 
 int main() {
-  ALOGD("android::hardware::secure_element::V1_2 is starting.");
-  ALOGD("Thales Secure Element HAL for eSE1 Service 1.6.0 is starting. libse-gto v1.13");
+  ALOGD("android.hardware.secure_element-service.thales is starting.");
+  ALOGD("Thales Secure Element AIDL for eSE1 Service 1.6.0 is starting. libse-gto v1.13");
   // Ignore this dlopen if libstpreprocess21.so doesn't exist.
 #if defined(ST_LIB_32)
   void* stdll = dlopen("/vendor/lib/libstpreprocess21.so", RTLD_NOW);
@@ -47,17 +50,15 @@ int main() {
       }
     }
   }
-  sp<ISecureElement> se_service = new SecureElement("eSE1");
-  configureRpcThreadpool(1, true);
-  status_t status = se_service->registerAsService("eSE1");
-  if (status != OK) {
-    LOG_ALWAYS_FATAL(
-        "registerAsService (%d).",
-        status);
-    return -1;
-  }
 
-  ALOGD("Thales Secure Element Service is ready");
-  joinRpcThreadpool();
-  return 1;
+  ABinderProcess_setThreadPoolMaxThreadCount(0);
+
+  auto se_service = ndk::SharedRefBase::make<se::SecureElement>("eSE1");
+  const std::string name = std::string() + BnSecureElement::descriptor + "/eSE1";
+  binder_status_t status = AServiceManager_addService(se_service->asBinder().get(), name.c_str());
+  CHECK_EQ(status, STATUS_OK);
+
+  ABinderProcess_joinThreadPool();
+  return EXIT_FAILURE;  // should not reach
+
 }

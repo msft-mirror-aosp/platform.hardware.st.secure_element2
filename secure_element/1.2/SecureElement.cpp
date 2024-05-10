@@ -4,7 +4,7 @@
  * This copy is licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
- *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html 
+ *     http://www.apache.org/licenses/LICENSE-2.0 or https://www.apache.org/licenses/LICENSE-2.0.html
  *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and limitations under the License.
@@ -21,17 +21,18 @@
 #include <signal.h>
 #include <limits.h>
 #include <log/log.h>
+#include <dlfcn.h>
+#include <android-base/properties.h>
 
 #include "se-gto/libse-gto.h"
 #include "SecureElement.h"
 
-#include <dlfcn.h>
-
+#if defined(ST_LIB_32)
+#define VENDOR_LIB_PATH "/vendor/lib/"
+#else
 #define VENDOR_LIB_PATH "/vendor/lib64/"
+#endif
 #define VENDOR_LIB_EXT ".so"
-#include <android-base/properties.h>
-//#include "profile.h"
-//#include "settings.h"
 
 namespace android {
 namespace hardware {
@@ -49,6 +50,10 @@ namespace implementation {
 
 #ifndef LOG_HAL_LEVEL
 #define LOG_HAL_LEVEL 4
+#endif
+
+#ifndef MAX_AID_LEN
+#define MAX_AID_LEN 16
 #endif
 
 uint8_t getResponse[5] = {0x00, 0xC0, 0x00, 0x00, 0x00};
@@ -106,7 +111,6 @@ int SecureElement::initializeSE() {
 
         return EXIT_FAILURE;
     }
-    //settings = default_settings(ctx);
     se_gto_set_log_level(ctx, 3);
 
     openConfigFile(1);
@@ -151,10 +155,16 @@ Return<void> SecureElement::init(const sp<::android::hardware::secure_element::V
 
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
-        clientCallback->onStateChange(false);
+        auto ret = clientCallback->onStateChange(false);
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
     } else {
         ALOGD("SecureElement:%s initializeSE Success", __func__);
-        clientCallback->onStateChange(true);
+        auto ret = clientCallback->onStateChange(true);
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
     }
 
     ALOGD("SecureElement:%s end", __func__);
@@ -178,10 +188,16 @@ Return<void> SecureElement::init_1_1(const sp<::android::hardware::secure_elemen
 
     if (initializeSE() != EXIT_SUCCESS) {
         ALOGE("SecureElement:%s initializeSE Failed", __func__);
-        clientCallback->onStateChange_1_1(false, "SE Initialized failed");
+        auto ret = clientCallback->onStateChange_1_1(false, "SE Initialized failed");
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
     } else {
         ALOGD("SecureElement:%s initializeSE Success", __func__);
-        clientCallback->onStateChange_1_1(true, "SE Initialized");
+        auto ret = clientCallback->onStateChange_1_1(true, "SE Initialized");
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
     }
 
     ALOGD("SecureElement:%s end", __func__);
@@ -250,18 +266,20 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
     if (!checkSeUp) {
         if (initializeSE() != EXIT_SUCCESS) {
             ALOGE("SecureElement:%s: Failed to re-initialise the eSE HAL", __func__);
-            if(internalClientCallback_v1_1 != nullptr) {
-                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
-            }
-            else {
-                internalClientCallback->onStateChange(false);
-            }
+            notify(false, "SE Initialized failed");
             _hidl_cb(resApduBuff, SecureElementStatus::IOERROR);
             return Void();
         }
     }
 
     SecureElementStatus mSecureElementStatus = SecureElementStatus::IOERROR;
+
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        _hidl_cb(resApduBuff, SecureElementStatus::FAILED);
+        return Void();
+    }
+
 
     uint8_t *apdu; //65536
     int apdu_len = 0;
@@ -273,7 +291,7 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
     apdu_len = 5;
     apdu = (uint8_t*)malloc(apdu_len * sizeof(uint8_t));
     resp = (uint8_t*)malloc(65536 * sizeof(uint8_t));
-  
+
     if (apdu != NULL && resp!=NULL) {
         index = 0;
         apdu[index++] = 0x00;
@@ -331,7 +349,7 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
 
     mSecureElementStatus = SecureElementStatus::IOERROR;
 
-    apdu_len = (int32_t)(5 + aid.size());
+    apdu_len = (int32_t)(6 + aid.size());
     resp_len = 0;
     apdu = (uint8_t*)malloc(apdu_len * sizeof(uint8_t));
     resp = (uint8_t*)malloc(65536 * sizeof(uint8_t));
@@ -344,6 +362,8 @@ Return<void> SecureElement::openLogicalChannel(const hidl_vec<uint8_t>& aid, uin
         apdu[index++] = p2;
         apdu[index++] = aid.size();
         memcpy(&apdu[index], aid.data(), aid.size());
+        index += aid.size();
+        apdu[index] = 0x00;
 
 send_logical:
         dump_bytes("CMD: ", ':', apdu, apdu_len, stdout);
@@ -432,22 +452,28 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
     int getResponseOffset = 0;
     uint8_t index = 0;
 
+    if (isBasicChannelOpen) {
+        ALOGE("SecureElement:%s: Basic Channel already open", __func__);
+        _hidl_cb(result, SecureElementStatus::CHANNEL_NOT_AVAILABLE);
+        return Void();
+    }
+
     if (!checkSeUp) {
         if (initializeSE() != EXIT_SUCCESS) {
             ALOGE("SecureElement:%s: Failed to re-initialise the eSE HAL", __func__);
-            if(internalClientCallback_v1_1 != nullptr) {
-                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
-            }
-            else {
-                internalClientCallback->onStateChange(false);
-            }
+            notify(false, "SE Initialized failed");
             _hidl_cb(result, SecureElementStatus::IOERROR);
             return Void();
         }
     }
 
+    if (aid.size() > MAX_AID_LEN) {
+        ALOGE("SecureElement:%s: Bad AID size", __func__);
+        _hidl_cb(result, SecureElementStatus::FAILED);
+        return Void();
+    }
 
-    apdu_len = (int32_t)(5 + aid.size());
+    apdu_len = (int32_t)(6 + aid.size());
     resp_len = 0;
     apdu = (uint8_t*)malloc(apdu_len * sizeof(uint8_t));
     resp = (uint8_t*)malloc(65536 * sizeof(uint8_t));
@@ -461,8 +487,11 @@ Return<void> SecureElement::openBasicChannel(const hidl_vec<uint8_t>& aid, uint8
         apdu[index++] = p2;
         apdu[index++] = aid.size();
         memcpy(&apdu[index], aid.data(), aid.size());
-        dump_bytes("CMD: ", ':', apdu, apdu_len, stdout);
+        index += aid.size();
+        apdu[index] = 0x00;
+
 send_basic:
+        dump_bytes("CMD: ", ':', apdu, apdu_len, stdout);
         resp_len = se_gto_apdu_transmit(ctx, apdu, apdu_len, resp, 65536);
         ALOGD("SecureElement:%s selectApdu resp_len = %d", __func__,resp_len);
     }
@@ -593,6 +622,22 @@ Return<::android::hardware::secure_element::V1_0::SecureElementStatus> SecureEle
 }
 
 void
+SecureElement::notify(bool state, const char *message)
+{
+    if (internalClientCallback_v1_1 != nullptr) {
+        auto ret = internalClientCallback_v1_1->onStateChange_1_1(state, message);
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
+    } else {
+        auto ret = internalClientCallback->onStateChange(state);
+        if (!ret.isOk()) {
+            ALOGW("failed to send onStateChange event!");
+        }
+    }
+}
+
+void
 SecureElement::dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FILE *out)
 {
     const uint8_t *s = p;
@@ -610,14 +655,11 @@ SecureElement::dump_bytes(const char *pf, char sep, const uint8_t *p, int n, FIL
 
     if (pf) {
         len += sprintf(msg , "%s" , pf);
-        //len = len + 8;
     }
     while (input_len--) {
         len += sprintf(msg + len, "%02X" , *s++);
-        //len = len + 2;
         if (input_len && sep) {
             len += sprintf(msg + len, ":");
-            //len++;
         }
     }
     sprintf(msg + len, "\n");
@@ -685,8 +727,6 @@ SecureElement::parseConfigFile(FILE *f, int verbose)
         if (s == NULL)
             break;
         if (s[0] == '#') {
-            /*if (verbose)
-                fputs(buf, stdout);*/
             continue;
         }
 
@@ -766,11 +806,7 @@ SecureElement::deinitializeSE() {
     if(checkSeUp){
         if (se_gto_close(ctx) < 0) {
             mSecureElementStatus = SecureElementStatus::FAILED;
-            if (internalClientCallback_v1_1 != nullptr) {
-                internalClientCallback_v1_1->onStateChange_1_1(false, "SE Initialized failed");
-            } else {
-                internalClientCallback->onStateChange(false);
-            }
+            notify(false, "SE Initialized failed");
         } else {
             ctx = NULL;
             mSecureElementStatus = SecureElementStatus::SUCCESS;
@@ -803,11 +839,7 @@ SecureElement::reset() {
         ALOGE("SecureElement:%s deinitializeSE Failed", __func__);
     }
 
-    if (internalClientCallback_v1_1 != nullptr) {
-        internalClientCallback_v1_1->onStateChange_1_1(false, "reset the SE");
-    } else {
-        internalClientCallback->onStateChange(false);
-    }
+    notify(false, "reset the SE");
 
     if (eSE1ResetToolStr.length() > 0) {
         typedef int (*STEseReset)();
@@ -821,11 +853,7 @@ SecureElement::reset() {
             ALOGD("SecureElement:%s STResetTool Success", __func__);
             if (initializeSE() == EXIT_SUCCESS) {
                 status = SecureElementStatus::SUCCESS;
-                if (internalClientCallback_v1_1 != nullptr) {
-                    internalClientCallback_v1_1->onStateChange_1_1(true, "SE Initialized");
-                } else {
-                    internalClientCallback->onStateChange(true);
-                }
+                notify(true, "SE Initialized");
             }
         } else {
             ALOGE("SecureElement:%s STResetTool Failed!", __func__);
@@ -834,11 +862,7 @@ SecureElement::reset() {
         dlclose(stdll);
     } else {
         if (initializeSE() == EXIT_SUCCESS) {
-            if (internalClientCallback_v1_1 != nullptr) {
-                 internalClientCallback_v1_1->onStateChange_1_1(true, "SE Initialized");
-            } else {
-                internalClientCallback->onStateChange(true);
-            }
+            notify(true, "SE Initialized");
             status = SecureElementStatus::SUCCESS;
         }
     }
@@ -847,13 +871,6 @@ SecureElement::reset() {
 
     return status;
 }
-
-// Methods from ::android::hidl::base::V1_0::IBase follow.
-
-//ISecureElement* HIDL_FETCH_ISecureElement(const char* /* name */) {
-    //return new SecureElement();
-//}
-//
 }  // namespace implementation
 }  // namespace V1_2
 }  // namespace secure_element
