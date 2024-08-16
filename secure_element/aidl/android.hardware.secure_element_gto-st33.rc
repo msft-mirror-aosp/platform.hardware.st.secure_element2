@@ -1,0 +1,3 @@
+service gto_secure_element_aidl_service-st33 /vendor/bin/hw/android.hardware.secure_element-service.thales-st33
+    class hal
+    user secure_element
