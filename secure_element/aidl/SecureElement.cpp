@@ -120,8 +120,11 @@ int SecureElement::initializeSE() {
 
     ret = resetSE();
 
-    if (ret < 0 && (strncmp(ese_flag_name, "eSE2", 4) == 0)) {
-        sleep(6);
+    if (ret < 0) {
+        if (strncmp(ese_flag_name, "eSE2", 4) == 0) {
+            sleep(4);
+        }
+        sleep(2);
         ALOGE("SecureElement:%s retry resetSE", __func__);
         ret = resetSE();
     }
